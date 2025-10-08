@@ -1,56 +1,66 @@
 import 'package:flutter/material.dart';
-import '../services/scheduler.dart';
-import '../models/attendance_record.dart';
+import 'package:provider/provider.dart';
+import '../services/attendance_service.dart';
 
-class HistoryScreen extends StatefulWidget {
+class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
-}
-
-class _HistoryScreenState extends State<HistoryScreen> {
-  final SchedulerService _scheduler = SchedulerService();
-
-  @override
-  void initState() {
-    super.initState();
-    // listen to notifiers to refresh UI
-    _scheduler.currentRoundNotifier.addListener(_onChange);
-    _scheduler.roundActiveNotifier.addListener(_onChange);
-  }
-
-  @override
-  void dispose() {
-    _scheduler.currentRoundNotifier.removeListener(_onChange);
-    _scheduler.roundActiveNotifier.removeListener(_onChange);
-    super.dispose();
-  }
-
-  void _onChange() => setState(() {});
-
-  @override
   Widget build(BuildContext context) {
-    final records = _scheduler.records;
+    final attendanceService = Provider.of<AttendanceService>(context);
+    final history = attendanceService.history;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Histórico")),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: records.isEmpty
-            ? const Center(child: Text("Nenhum registro ainda."))
-            : ListView.builder(
-                itemCount: records.length,
-                itemBuilder: (context, idx) {
-                  final AttendanceRecord r = records[idx];
-                  return Card(
-                    child: ListTile(
-                      title: Text("Rodada ${r.roundNumber} — ${r.statusString()}"),
-                      subtitle: Text("Agendada: ${r.scheduledTime.toLocal().toIso8601String().split('T').join(' ')}\nEvid: ${r.evidencesString()}"),
-                    ),
-                  );
-                },
-              ),
+      appBar: AppBar(
+        title: const Text('Histórico de Hoje'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () async {
+              final messenger =
+                  ScaffoldMessenger.of(context); // Capture antes do await
+              final result = await attendanceService.exportToCsv();
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(result?.startsWith('Erro') ?? true
+                      ? result ?? 'Nenhum dado para exportar.'
+                      : 'CSV salvo em: $result'),
+                  backgroundColor: result?.startsWith('Erro') ?? true
+                      ? Colors.red
+                      : Colors.green,
+                ),
+              );
+            },
+          ),
+        ],
       ),
+      body: history.isEmpty
+          ? const Center(child: Text('Nenhuma rodada registrada hoje.'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(8),
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final record = history[index];
+                final isPresent = record.result == 'Presente';
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isPresent ? Colors.green : Colors.red,
+                      child: Text(
+                        record.round.toString(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(
+                      'Rodada ${record.round}: ${record.result}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                        'Score: ${record.presenceScore} | Horário: ${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}'),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
