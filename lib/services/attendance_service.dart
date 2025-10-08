@@ -8,56 +8,62 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/attendance_record.dart';
 import 'settings_service.dart';
-import 'sensor_service.dart'; // Importa o novo serviço de sensores
+import 'sensor_service.dart';
 
 class AttendanceService with ChangeNotifier {
   final SettingsService _settingsService;
-  final SensorService _sensorService = SensorService(); // Instancia o serviço de sensores
+  final SensorService _sensorService = SensorService();
   Timer? _timer;
 
-  // Notificador para o Liveness Challenge
   final ValueNotifier<bool> isChallengeActive = ValueNotifier(false);
   Completer<bool>? _challengeCompleter;
 
   List<AttendanceRecord> _history = [];
   bool _isSchedulerRunning = false;
+  bool _isProcessing = false; // Adicionado
   DateTime? _nextRoundTime;
   int _currentRound = 0;
 
   List<AttendanceRecord> get history => _history;
   bool get isSchedulerRunning => _isSchedulerRunning;
+  bool get isProcessing => _isProcessing; // Adicionado
   DateTime? get nextRoundTime => _nextRoundTime;
   AttendanceRecord? get lastRecord => _history.isEmpty ? null : _history.last;
 
   AttendanceService(this._settingsService);
+
+  // Em attendance_service.dart, substitua startScheduler e _runFirstRound
 
   void startScheduler() {
     if (_isSchedulerRunning) return;
     _isSchedulerRunning = true;
     _currentRound = 0;
     _history = [];
-    
-    // A primeira rodada começa após um curto intervalo para o usuário se preparar
-    _scheduleNextRound(const Duration(seconds: 15)); 
-    _timer = Timer(const Duration(seconds: 15), _runFirstRound);
-
     notifyListeners();
-  }
-  
-  void _runFirstRound() async {
-    await runAttendanceRound();
-    if(!_isSchedulerRunning) return;
 
-    final interval = _settingsService.getSettings().intervalInMinutes;
-    _timer = Timer.periodic(Duration(minutes: interval), (timer) {
-      if (_currentRound >= _settingsService.getSettings().numberOfRounds -1) {
-        stopScheduler();
-      } else {
-        runAttendanceRound();
-      }
+    // A primeira rodada começa após um curto intervalo
+    const initialDelay = Duration(seconds: 15);
+    final interval =
+        Duration(minutes: _settingsService.getSettings().intervalInMinutes);
+
+    _scheduleNextRound(initialDelay);
+
+    _timer = Timer(initialDelay, () {
+      // Executa a primeira ronda
+      runAttendanceRound();
+
+      // Agenda as rondas subsequentes
+      _timer = Timer.periodic(interval, (timer) {
+        if (_currentRound >=
+                _settingsService.getSettings().numberOfRounds - 1 ||
+            !_isSchedulerRunning) {
+          stopScheduler();
+        } else {
+          runAttendanceRound();
+        }
+      });
     });
   }
-
 
   void stopScheduler() {
     _timer?.cancel();
@@ -67,28 +73,30 @@ class AttendanceService with ChangeNotifier {
   }
 
   void _scheduleNextRound(Duration after) {
-      _nextRoundTime = DateTime.now().add(after);
-      notifyListeners();
+    _nextRoundTime = DateTime.now().add(after);
+    notifyListeners();
+  }
+
+  Future<void> runSingleAttendanceRound() async {
+    _isProcessing = true;
+    notifyListeners();
+    await runAttendanceRound(manual: true);
+    _isProcessing = false;
+    notifyListeners();
   }
 
   Future<void> runAttendanceRound({bool manual = false}) async {
     final student = _settingsService.getStudent();
     if (student == null) return;
-    
+
     if (!manual) {
       _currentRound++;
     }
 
-    // 1. Dispara o Liveness Challenge e aguarda a resposta do usuário
     final challengePassed = await _triggerLivenessChallenge();
-
-    // 2. Coleta os sinais reais dos sensores
     final signals = await _collectRealSignals(challengePassed);
-
-    // 3. Calcula o score
     final score = _computePresenceScore(signals);
 
-    // 4. Registra a presença
     final record = AttendanceRecord(
       studentId: student.id,
       studentName: student.name,
@@ -105,7 +113,7 @@ class AttendanceService with ChangeNotifier {
     );
 
     _history.add(record);
-    
+
     if (_isSchedulerRunning && !manual) {
       final interval = _settingsService.getSettings().intervalInMinutes;
       _scheduleNextRound(Duration(minutes: interval));
@@ -116,7 +124,7 @@ class AttendanceService with ChangeNotifier {
   Future<bool> _triggerLivenessChallenge() async {
     _challengeCompleter = Completer<bool>();
     isChallengeActive.value = true;
-    
+
     bool result = await _challengeCompleter!.future;
 
     isChallengeActive.value = false;
@@ -129,7 +137,6 @@ class AttendanceService with ChangeNotifier {
     }
   }
 
-  // Coleta dados REAIS dos sensores
   Future<Map<String, dynamic>> _collectRealSignals(bool challengeResult) async {
     final results = await Future.wait([
       _sensorService.getWifiSsid(),
@@ -149,35 +156,59 @@ class AttendanceService with ChangeNotifier {
 
   int _computePresenceScore(Map<String, dynamic> signals) {
     double score = 0;
-    
-    // SSID da instituição (exemplo: 'eduroam', 'uni-wifi', etc.)
-    final targetSsid = 'eduroam'; // Defina o SSID alvo aqui
-    if (signals['ssid_detected'] != null && (signals['ssid_detected'] as String).toLowerCase().contains(targetSsid)) {
+
+    const targetSsid = 'eduroam';
+    if (signals['ssid_detected'] != null &&
+        (signals['ssid_detected'] as String)
+            .toLowerCase()
+            .contains(targetSsid)) {
       score += 30;
     }
     int bleCount = signals['ble_count'];
     score += (bleCount > 10 ? 10 : bleCount) * 2;
     double accelVariance = signals['accel_variance'];
-    if (accelVariance < 0.05) score += 15;
-    else if (accelVariance < 0.5) score += 7;
+    if (accelVariance < 0.05) {
+      score += 15;
+    } else if (accelVariance < 0.5) {
+      score += 7;
+    }
     double audioRms = signals['audio_rms'];
-    if (audioRms > 15.0 && audioRms < 40.0) score += 20;
-    else if (audioRms >= 40.0) score += 10;
-    if (signals['challenge_passed'] == true) score += 15;
+    if (audioRms > 15.0 && audioRms < 40.0) {
+      score += 20;
+    } else if (audioRms >= 40.0) {
+      score += 10;
+    }
+    if (signals['challenge_passed'] == true) {
+      score += 15;
+    }
 
     return score.clamp(0, 100).toInt();
   }
 
   Future<String?> exportToCsv() async {
     if (_history.isEmpty) return "Nenhum dado para exportar.";
-    final header = ['student_id', 'student_name', 'date', 'rodada', 'timestamp', 'presence_score', 'result', 'ssid_detected', 'ble_count', 'accel_variance', 'audio_rms', 'challenge_passed'];
+    final header = [
+      'student_id',
+      'student_name',
+      'date',
+      'rodada',
+      'timestamp',
+      'presence_score',
+      'result',
+      'ssid_detected',
+      'ble_count',
+      'accel_variance',
+      'audio_rms',
+      'challenge_passed'
+    ];
     List<List<String>> rows = [header, ..._history.map((r) => r.toCsvRow())];
     String csv = const ListToCsvConverter(fieldDelimiter: ';').convert(rows);
 
     try {
       if (await Permission.manageExternalStorage.request().isGranted) {
         final directory = await getExternalStorageDirectory();
-        final path = "${directory?.path}/chamada_${DateTime.now().millisecondsSinceEpoch}.csv";
+        final path =
+            "${directory?.path}/chamada_${DateTime.now().millisecondsSinceEpoch}.csv";
         final file = File(path);
         await file.writeAsString(csv);
         return path;
@@ -195,4 +226,3 @@ class AttendanceService with ChangeNotifier {
     super.dispose();
   }
 }
-

@@ -47,7 +47,7 @@ class _ChallengeDialogState extends State<ChallengeDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
+          const Text(
             'Clique no botão abaixo em:',
             textAlign: TextAlign.center,
           ),

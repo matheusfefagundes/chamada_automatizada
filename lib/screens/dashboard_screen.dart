@@ -3,18 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/attendance_service.dart';
 import '../services/settings_service.dart';
+import '../models/student.dart'; // Importe o modelo Student
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Usamos 'watch' para que a UI se reconstrua quando os valores mudarem
     final attendanceService = context.watch<AttendanceService>();
     final settingsService = context.watch<SettingsService>();
-    final studentName = settingsService.studentName;
-    final className = settingsService.className;
-    final studentId = settingsService.studentId;
+    final Student? student = settingsService.getStudent(); // Obtenha o objeto Student
 
     final nextRoundTime = attendanceService.nextRoundTime;
     final lastRecord = attendanceService.lastRecord;
@@ -30,7 +28,6 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card de boas-vindas
             Card(
               elevation: 4,
               child: Padding(
@@ -39,20 +36,18 @@ class DashboardScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Olá, ${studentName ?? 'Aluno'}!',
+                      'Olá, ${student?.name ?? 'Aluno'}!', // Corrigido
                       style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Turma: ${className ?? 'N/A'}'),
-                    Text('Matrícula: ${studentId ?? 'N/A'}'),
+                    Text('Turma: ${student?.className ?? 'N/A'}'), // Corrigido
+                    Text('Matrícula: ${student?.id ?? 'N/A'}'), // Corrigido
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
-
-            // Card de status da chamada
             Card(
               elevation: 4,
               child: Padding(
@@ -99,8 +94,6 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const Spacer(),
-
-            // Botão de simulação
             ElevatedButton.icon(
               icon: attendanceService.isProcessing
                   ? const SizedBox(
@@ -113,7 +106,7 @@ class DashboardScreen extends StatelessWidget {
                   ? 'Processando Sinais...'
                   : 'Forçar Rodada Agora'),
               onPressed: attendanceService.isProcessing
-                  ? null // Desabilita o botão enquanto uma rodada está sendo processada
+                  ? null
                   : () {
                       context
                           .read<AttendanceService>()

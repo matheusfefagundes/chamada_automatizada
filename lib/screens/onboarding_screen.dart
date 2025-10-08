@@ -1,10 +1,8 @@
-// screens/onboarding_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/student.dart';
 import '../services/settings_service.dart';
-import 'home_scaffold.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -27,8 +25,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
       Permission.microphone,
-      Permission.manageExternalStorage, // Para salvar CSV
+      Permission.storage,
     ].request();
+
+    if (!mounted) return;
 
     // Verifica se as permissões mais importantes foram concedidas
     if (statuses[Permission.location]!.isGranted &&
@@ -38,15 +38,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         name: _nameController.text,
         className: _classController.text,
       );
-      await Provider.of<SettingsService>(context, listen: false).saveStudent(student);
-      
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeScaffold()),
-      );
+      await Provider.of<SettingsService>(context, listen: false)
+          .saveStudent(student);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('As permissões de Localização e Bluetooth são obrigatórias para o funcionamento do app.'),
+          content: Text(
+              'As permissões de Localização e Bluetooth são obrigatórias para o funcionamento do app.'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 5),
         ),
@@ -79,27 +77,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 40),
                 TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Nome Completo', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                        labelText: 'Nome Completo',
+                        border: OutlineInputBorder()),
+                    validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _idController,
-                  decoration: const InputDecoration(labelText: 'Matrícula', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
+                    controller: _idController,
+                    decoration: const InputDecoration(
+                        labelText: 'Matrícula', border: OutlineInputBorder()),
+                    validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _classController,
-                  decoration: const InputDecoration(labelText: 'Turma', border: OutlineInputBorder()),
-                  validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
+                    controller: _classController,
+                    decoration: const InputDecoration(
+                        labelText: 'Turma', border: OutlineInputBorder()),
+                    validator: (v) => v!.isEmpty ? 'Campo obrigatório' : null),
                 const SizedBox(height: 40),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Conceder Permissões e Salvar'),
                   onPressed: _requestPermissionsAndSave,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24)
-                  ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 16, horizontal: 24)),
                 ),
               ],
             ),
@@ -109,4 +111,3 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 }
-
