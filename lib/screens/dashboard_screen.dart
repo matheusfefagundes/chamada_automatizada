@@ -1,9 +1,8 @@
-// screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/attendance_service.dart';
 import '../services/settings_service.dart';
-import '../models/student.dart'; // Importe o modelo Student
+import '../models/student.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -12,7 +11,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final attendanceService = context.watch<AttendanceService>();
     final settingsService = context.watch<SettingsService>();
-    final Student? student = settingsService.getStudent(); // Obtenha o objeto Student
+    final Student? student = settingsService.getStudent();
 
     final nextRoundTime = attendanceService.nextRoundTime;
     final lastRecord = attendanceService.lastRecord;
@@ -36,13 +35,13 @@ class DashboardScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Olá, ${student?.name ?? 'Aluno'}!', // Corrigido
+                      'Olá, ${student?.name ?? 'Aluno'}!',
                       style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text('Turma: ${student?.className ?? 'N/A'}'), // Corrigido
-                    Text('Matrícula: ${student?.id ?? 'N/A'}'), // Corrigido
+                    Text('Turma: ${student?.className ?? 'N/A'}'),
+                    Text('Matrícula: ${student?.id ?? 'N/A'}'),
                   ],
                 ),
               ),
@@ -84,7 +83,6 @@ class DashboardScreen extends StatelessWidget {
                                   : Colors.red.shade700,
                             ),
                           ),
-                          Text(' (Score: ${lastRecord.presenceScore})'),
                         ],
                       )
                     else
@@ -103,7 +101,7 @@ class DashboardScreen extends StatelessWidget {
                           strokeWidth: 3, color: Colors.white))
                   : const Icon(Icons.sensors),
               label: Text(attendanceService.isProcessing
-                  ? 'Processando Sinais...'
+                  ? 'Processando...'
                   : 'Forçar Rodada Agora'),
               onPressed: attendanceService.isProcessing
                   ? null
@@ -114,7 +112,7 @@ class DashboardScreen extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text(
-                                'Iniciando coleta de sinais... Fique atento ao desafio!')),
+                                'Iniciando rodada... Fique atento ao desafio!')),
                       );
                     },
               style: ElevatedButton.styleFrom(

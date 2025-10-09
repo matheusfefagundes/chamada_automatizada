@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(height: 30),
-          const Text('Parâmetros de Simulação', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Parâmetros da Chamada', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           TextField(
             controller: _roundsController,

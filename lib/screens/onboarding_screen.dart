@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/student.dart';
 import '../services/settings_service.dart';
 
@@ -16,46 +15,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _idController = TextEditingController();
   final _classController = TextEditingController();
 
-  Future<void> _requestPermissionsAndSave() async {
+  Future<void> _saveStudent() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Solicita todas as permissões necessárias
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.location,
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.microphone,
-      Permission.storage,
-    ].request();
-
-    if (!mounted) return;
-
-    // Verifica se as permissões mais importantes foram concedidas
-    if (statuses[Permission.location]!.isGranted &&
-        statuses[Permission.bluetoothScan]!.isGranted) {
-      final student = Student(
-        id: _idController.text,
-        name: _nameController.text,
-        className: _classController.text,
-      );
-      await Provider.of<SettingsService>(context, listen: false)
-          .saveStudent(student);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'As permissões de Localização e Bluetooth são obrigatórias para o funcionamento do app.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
-    }
+    final student = Student(
+      id: _idController.text,
+      name: _nameController.text,
+      className: _classController.text,
+    );
+    await Provider.of<SettingsService>(context, listen: false)
+        .saveStudent(student);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cadastro e Permissões')),
+      appBar: AppBar(title: const Text('Cadastro do Aluno')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -72,7 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Primeiro, preencha seus dados e conceda as permissões para que o app funcione corretamente.',
+                  'Preencha seus dados para começar.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
@@ -97,8 +72,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 40),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Conceder Permissões e Salvar'),
-                  onPressed: _requestPermissionsAndSave,
+                  label: const Text('Salvar'),
+                  onPressed: _saveStudent,
                   style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                           vertical: 16, horizontal: 24)),

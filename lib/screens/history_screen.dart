@@ -17,8 +17,7 @@ class HistoryScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: () async {
-              final messenger =
-                  ScaffoldMessenger.of(context); // Capture antes do await
+              final messenger = ScaffoldMessenger.of(context);
               final result = await attendanceService.exportToCsv();
               messenger.showSnackBar(
                 SnackBar(
@@ -56,7 +55,7 @@ class HistoryScreen extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                        'Score: ${record.presenceScore} | Horário: ${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}'),
+                        'Horário: ${record.timestamp.hour.toString().padLeft(2, '0')}:${record.timestamp.minute.toString().padLeft(2, '0')}'),
                   ),
                 );
               },

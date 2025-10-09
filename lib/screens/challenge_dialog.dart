@@ -59,13 +59,18 @@ class _ChallengeDialogState extends State<ChallengeDialog> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () {
-            _timer?.cancel();
-            Navigator.of(context).pop();
-            widget.onComplete(true); // Sucesso
-          },
-          child: const Text('CONFIRMAR PRESENÇA'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                _timer?.cancel();
+                Navigator.of(context).pop();
+                widget.onComplete(true); // Sucesso
+              },
+              child: const Text('CONFIRMAR PRESENÇA'),
+            ),
+          ],
         ),
       ],
     );

@@ -1,18 +1,13 @@
-// services/attendance_service.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
-import 'package:permission_handler/permission_handler.dart';
-
 import '../models/attendance_record.dart';
 import 'settings_service.dart';
-import 'sensor_service.dart';
 
 class AttendanceService with ChangeNotifier {
   final SettingsService _settingsService;
-  final SensorService _sensorService = SensorService();
   Timer? _timer;
 
   final ValueNotifier<bool> isChallengeActive = ValueNotifier(false);
@@ -20,19 +15,17 @@ class AttendanceService with ChangeNotifier {
 
   List<AttendanceRecord> _history = [];
   bool _isSchedulerRunning = false;
-  bool _isProcessing = false; // Adicionado
+  bool _isProcessing = false;
   DateTime? _nextRoundTime;
   int _currentRound = 0;
 
   List<AttendanceRecord> get history => _history;
   bool get isSchedulerRunning => _isSchedulerRunning;
-  bool get isProcessing => _isProcessing; // Adicionado
+  bool get isProcessing => _isProcessing;
   DateTime? get nextRoundTime => _nextRoundTime;
   AttendanceRecord? get lastRecord => _history.isEmpty ? null : _history.last;
 
   AttendanceService(this._settingsService);
-
-  // Em attendance_service.dart, substitua startScheduler e _runFirstRound
 
   void startScheduler() {
     if (_isSchedulerRunning) return;
@@ -41,7 +34,7 @@ class AttendanceService with ChangeNotifier {
     _history = [];
     notifyListeners();
 
-    // A primeira rodada começa após um curto intervalo
+    // A primeira rodada começa após um curto intervalo para simulação
     const initialDelay = Duration(seconds: 15);
     final interval =
         Duration(minutes: _settingsService.getSettings().intervalInMinutes);
@@ -54,9 +47,7 @@ class AttendanceService with ChangeNotifier {
 
       // Agenda as rondas subsequentes
       _timer = Timer.periodic(interval, (timer) {
-        if (_currentRound >=
-                _settingsService.getSettings().numberOfRounds - 1 ||
-            !_isSchedulerRunning) {
+        if (_currentRound >= _settingsService.getSettings().numberOfRounds) {
           stopScheduler();
         } else {
           runAttendanceRound();
@@ -94,8 +85,6 @@ class AttendanceService with ChangeNotifier {
     }
 
     final challengePassed = await _triggerLivenessChallenge();
-    final signals = await _collectRealSignals(challengePassed);
-    final score = _computePresenceScore(signals);
 
     final record = AttendanceRecord(
       studentId: student.id,
@@ -103,12 +92,7 @@ class AttendanceService with ChangeNotifier {
       date: DateTime.now(),
       round: manual ? _history.length + 1 : _currentRound,
       timestamp: DateTime.now(),
-      presenceScore: score,
-      result: score >= 50 ? 'Presente' : 'Ausente',
-      ssidDetected: signals['ssid_detected'] != null,
-      bleCount: signals['ble_count'] as int,
-      accelVariance: signals['accel_variance'] as double,
-      audioRms: signals['audio_rms'] as double,
+      result: challengePassed ? 'Presente' : 'Ausente',
       challengePassed: challengePassed,
     );
 
@@ -137,54 +121,6 @@ class AttendanceService with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> _collectRealSignals(bool challengeResult) async {
-    final results = await Future.wait([
-      _sensorService.getWifiSsid(),
-      _sensorService.scanBleDevices(),
-      _sensorService.getAccelerometerVariance(),
-      _sensorService.getAudioRms(),
-    ]);
-
-    return {
-      'ssid_detected': results[0],
-      'ble_count': results[1],
-      'accel_variance': results[2],
-      'audio_rms': results[3],
-      'challenge_passed': challengeResult,
-    };
-  }
-
-  int _computePresenceScore(Map<String, dynamic> signals) {
-    double score = 0;
-
-    const targetSsid = 'eduroam';
-    if (signals['ssid_detected'] != null &&
-        (signals['ssid_detected'] as String)
-            .toLowerCase()
-            .contains(targetSsid)) {
-      score += 30;
-    }
-    int bleCount = signals['ble_count'];
-    score += (bleCount > 10 ? 10 : bleCount) * 2;
-    double accelVariance = signals['accel_variance'];
-    if (accelVariance < 0.05) {
-      score += 15;
-    } else if (accelVariance < 0.5) {
-      score += 7;
-    }
-    double audioRms = signals['audio_rms'];
-    if (audioRms > 15.0 && audioRms < 40.0) {
-      score += 20;
-    } else if (audioRms >= 40.0) {
-      score += 10;
-    }
-    if (signals['challenge_passed'] == true) {
-      score += 15;
-    }
-
-    return score.clamp(0, 100).toInt();
-  }
-
   Future<String?> exportToCsv() async {
     if (_history.isEmpty) return "Nenhum dado para exportar.";
     final header = [
@@ -193,28 +129,34 @@ class AttendanceService with ChangeNotifier {
       'date',
       'rodada',
       'timestamp',
-      'presence_score',
-      'result',
-      'ssid_detected',
-      'ble_count',
-      'accel_variance',
-      'audio_rms',
-      'challenge_passed'
+      'status',
+      'notes',
+      'validation_method'
     ];
-    List<List<String>> rows = [header, ..._history.map((r) => r.toCsvRow())];
+    List<List<String>> rows = [
+      header,
+      ..._history.map((r) => [
+            r.studentId,
+            r.studentName,
+            '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}',
+            r.round.toString(),
+            r.result == 'Presente' ? 'P' : 'F',
+            r.timestamp.toIso8601String(),
+            '', // notes
+            'CHALLENGE_DIALOG' // validation_method
+          ])
+    ];
     String csv = const ListToCsvConverter(fieldDelimiter: ';').convert(rows);
 
     try {
-      if (await Permission.manageExternalStorage.request().isGranted) {
-        final directory = await getExternalStorageDirectory();
-        final path =
-            "${directory?.path}/chamada_${DateTime.now().millisecondsSinceEpoch}.csv";
-        final file = File(path);
-        await file.writeAsString(csv);
-        return path;
-      }
-      return "Permissão de armazenamento negada.";
+      final directory = await getApplicationDocumentsDirectory();
+      final path =
+          "${directory.path}/chamada_${DateTime.now().millisecondsSinceEpoch}.csv";
+      final file = File(path);
+      await file.writeAsString(csv);
+      return path;
     } catch (e) {
+      debugPrint("Erro ao salvar arquivo: $e");
       return "Erro ao salvar arquivo: $e";
     }
   }
@@ -222,7 +164,6 @@ class AttendanceService with ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
-    _sensorService.dispose();
     super.dispose();
   }
 }

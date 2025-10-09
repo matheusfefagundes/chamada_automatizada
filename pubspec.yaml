@@ -1,6 +1,6 @@
 name: chamada_automatizada
 description: "Aplicativo para automatização da chamada em sala de aula."
-publish_to: 'none' 
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -11,36 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Gerenciamento de estado
   provider: ^6.1.1
-  
-  # Persistência de dados simples (onboarding e configurações)
   shared_preferences: ^2.2.2
-  
-  # Geração de CSV
   csv: ^5.1.1
-  
-  # Acesso a diretórios do dispositivo para salvar o CSV
   path_provider: ^2.1.1
-  
-  # ---- Pacotes para sensores reais ----
-  
-  # Para solicitar permissões (localização, microfone, etc.)
-  permission_handler: ^11.0.1
-  
-  # Para obter informações da rede Wi-Fi (requer permissão de localização)
-  network_info_plus: ^5.0.1
-  
-  # Para escanear dispositivos Bluetooth Low Energy
-  flutter_blue_plus: ^1.25.3
-  
-  # Para acessar o acelerômetro
-  sensors_plus: ^3.0.3
-  
-  # Para gravar áudio e medir o nível de ruído
-  record: ^5.0.1
-  
-  # Para ícones
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
@@ -50,4 +24,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-

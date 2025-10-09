@@ -5,7 +5,6 @@ class Student {
 
   Student({required this.id, required this.name, required this.className});
 
-  // Métodos para serialização/deserialização para SharedPreferences
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
       id: json['id'] as String,

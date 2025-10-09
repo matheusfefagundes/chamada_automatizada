@@ -23,7 +23,6 @@ class _HomeScaffoldState extends State<HomeScaffold> {
   @override
   void initState() {
     super.initState();
-    // Ouve o notificador do desafio para exibir o diálogo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final attendanceService = context.read<AttendanceService>();
       attendanceService.isChallengeActive.addListener(_showChallengeIfNeeded);
@@ -32,7 +31,6 @@ class _HomeScaffoldState extends State<HomeScaffold> {
 
   @override
   void dispose() {
-    // É importante remover o listener para evitar memory leaks
     if(mounted){
        context.read<AttendanceService>().isChallengeActive.removeListener(_showChallengeIfNeeded);
     }
@@ -41,16 +39,14 @@ class _HomeScaffoldState extends State<HomeScaffold> {
 
   void _showChallengeIfNeeded() {
     final attendanceService = context.read<AttendanceService>();
-    // Garante que o diálogo não seja mostrado sobre outro
     if (attendanceService.isChallengeActive.value && ModalRoute.of(context)?.isCurrent == true) {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
           return ChallengeDialog(
-            duration: 10, // Duração do desafio em segundos
+            duration: 10,
             onComplete: (success) {
-              // Informa ao serviço se o desafio foi completado com sucesso ou não
               attendanceService.completeChallenge(success);
             },
           );
@@ -80,4 +76,3 @@ class _HomeScaffoldState extends State<HomeScaffold> {
     );
   }
 }
-
