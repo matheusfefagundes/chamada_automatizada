@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/attendance_record.dart';
 import 'settings_service.dart';
 
@@ -19,6 +20,11 @@ class AttendanceService with ChangeNotifier {
   DateTime? _nextRoundTime;
   int _currentRound = 0;
 
+  // Coordenadas do local permitido
+  final double _targetLatitude = -26.3045;
+  final double _targetLongitude = -48.8456;
+  final double _maxDistanceInMeters = 1000; 
+
   List<AttendanceRecord> get history => _history;
   bool get isSchedulerRunning => _isSchedulerRunning;
   bool get isProcessing => _isProcessing;
@@ -27,6 +33,81 @@ class AttendanceService with ChangeNotifier {
 
   AttendanceService(this._settingsService);
 
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  Future<void> runAttendanceRound({bool manual = false}) async {
+    final student = _settingsService.getStudent();
+    if (student == null) return;
+
+    if (!manual) {
+      _currentRound++;
+    }
+
+    bool challengePassed = false;
+    String result = 'Ausente';
+    try {
+      Position position = await _determinePosition();
+      double distanceInMeters = Geolocator.distanceBetween(
+        _targetLatitude,
+        _targetLongitude,
+        position.latitude,
+        position.longitude,
+      );
+
+      if (distanceInMeters <= _maxDistanceInMeters) {
+        challengePassed = await _triggerLivenessChallenge();
+        result = challengePassed ? 'Presente' : 'Ausente';
+      } else {
+        result = 'Fora do Local';
+      }
+    } catch (e) {
+      result = 'Erro de Localização';
+      debugPrint("Erro ao obter localização: $e");
+    }
+
+
+    final record = AttendanceRecord(
+      studentId: student.id,
+      studentName: student.name,
+      date: DateTime.now(),
+      round: manual ? _history.length + 1 : _currentRound,
+      timestamp: DateTime.now(),
+      result: result,
+      challengePassed: challengePassed,
+    );
+
+    _history.add(record);
+
+    if (_isSchedulerRunning && !manual) {
+      final interval = _settingsService.getSettings().intervalInMinutes;
+      _scheduleNextRound(Duration(minutes: interval));
+    }
+    notifyListeners();
+  }
+  
   void startScheduler() {
     if (_isSchedulerRunning) return;
     _isSchedulerRunning = true;
@@ -73,35 +154,6 @@ class AttendanceService with ChangeNotifier {
     notifyListeners();
     await runAttendanceRound(manual: true);
     _isProcessing = false;
-    notifyListeners();
-  }
-
-  Future<void> runAttendanceRound({bool manual = false}) async {
-    final student = _settingsService.getStudent();
-    if (student == null) return;
-
-    if (!manual) {
-      _currentRound++;
-    }
-
-    final challengePassed = await _triggerLivenessChallenge();
-
-    final record = AttendanceRecord(
-      studentId: student.id,
-      studentName: student.name,
-      date: DateTime.now(),
-      round: manual ? _history.length + 1 : _currentRound,
-      timestamp: DateTime.now(),
-      result: challengePassed ? 'Presente' : 'Ausente',
-      challengePassed: challengePassed,
-    );
-
-    _history.add(record);
-
-    if (_isSchedulerRunning && !manual) {
-      final interval = _settingsService.getSettings().intervalInMinutes;
-      _scheduleNextRound(Duration(minutes: interval));
-    }
     notifyListeners();
   }
 

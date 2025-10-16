@@ -1,8 +1,4 @@
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>Precisamos da sua localização para detetar a rede Wi-Fi e dispositivos Bluetooth próximos.</string>
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>Precisamos de acesso ao Bluetooth para contar dispositivos de outros alunos na sala.</string>
-<key>NSBluetoothPeripheralUsageDescription</key>
-<string>Precisamos de acesso ao Bluetooth para contar dispositivos de outros alunos na sala.</string>
-<key>NSMicrophoneUsageDescription</key>
-<string>Precisamos de acesso ao microfone para analisar o nível de ruído da sala.</string>
+<string>Este aplicativo precisa de acesso à sua localização para validar a chamada.</string>
+<key>NSLocationAlwaysUsageDescription</key>
+<string>Este aplicativo precisa de acesso à sua localização para validar a chamada.</string>
