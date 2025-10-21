@@ -1,3 +1,5 @@
+// lib/screens/dashboard_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/attendance_service.dart';
@@ -57,6 +59,7 @@ class DashboardScreen extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 16),
+                    // ... (Status da chamada permanece o mesmo)
                     if (isSchedulerRunning)
                       nextRoundTime != null
                           ? Text(
@@ -87,11 +90,26 @@ class DashboardScreen extends StatelessWidget {
                       )
                     else
                       const Text('Nenhum registro de chamada hoje.'),
+                    const SizedBox(height: 16),
+                    ValueListenableBuilder<double?>(
+                      valueListenable: attendanceService.currentDistance,
+                      builder: (context, distance, child) {
+                        if (distance != null) {
+                          return Text(
+                            'Distância do local: ${distance.toStringAsFixed(2)} metros',
+                            style: const TextStyle(
+                                fontSize: 14, color: Colors.blueGrey),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                   ],
                 ),
               ),
             ),
             const Spacer(),
+            // ... (Botão permanece o mesmo)
             ElevatedButton.icon(
               icon: attendanceService.isProcessing
                   ? const SizedBox(

@@ -12,6 +12,7 @@ class AttendanceService with ChangeNotifier {
   Timer? _timer;
 
   final ValueNotifier<bool> isChallengeActive = ValueNotifier(false);
+  final ValueNotifier<double?> currentDistance = ValueNotifier(null); // Adicionado para depuração
   Completer<bool>? _challengeCompleter;
 
   List<AttendanceRecord> _history = [];
@@ -21,9 +22,9 @@ class AttendanceService with ChangeNotifier {
   int _currentRound = 0;
 
   // Coordenadas do local permitido
-  final double _targetLatitude = -26.3045;
-  final double _targetLongitude = -48.8456;
-  final double _maxDistanceInMeters = 1000; 
+  final double _targetLatitude = -26.265062;
+  final double _targetLongitude = -48.863121;
+  final double _maxDistanceInMeters = 1000; // Em metros
 
   List<AttendanceRecord> get history => _history;
   bool get isSchedulerRunning => _isSchedulerRunning;
@@ -76,6 +77,7 @@ class AttendanceService with ChangeNotifier {
         position.latitude,
         position.longitude,
       );
+      currentDistance.value = distanceInMeters; // Atualiza a distância para a UI
 
       if (distanceInMeters <= _maxDistanceInMeters) {
         challengePassed = await _triggerLivenessChallenge();
@@ -85,9 +87,9 @@ class AttendanceService with ChangeNotifier {
       }
     } catch (e) {
       result = 'Erro de Localização';
+      currentDistance.value = null; // Limpa em caso de erro
       debugPrint("Erro ao obter localização: $e");
     }
-
 
     final record = AttendanceRecord(
       studentId: student.id,
@@ -107,7 +109,7 @@ class AttendanceService with ChangeNotifier {
     }
     notifyListeners();
   }
-  
+
   void startScheduler() {
     if (_isSchedulerRunning) return;
     _isSchedulerRunning = true;
