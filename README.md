@@ -36,7 +36,7 @@ Instale as dependências:
 Execute o aplicativo:
 - flutter run
 
-- Observação: Para testar a funcionalidade de localização no emulador Android, certifique-se de definir a localização do emulador para as coordenadas alvo (Latitude: -26.265062, Longitude: -48.863121) ou uma localização próxima, dentro do raio de 1km. (Ver lib/services/attendance_service.dart).
+- Observação: Para testar a funcionalidade de localização no emulador Android, certifique-se de definir a localização do emulador para as coordenadas alvo (Latitude: -26.304309480393407, Longitude: -48.851039224536311) ou uma localização próxima, dentro do raio de 1km. (Ver lib/services/attendance_service.dart).
 - Permissões: Conceda as permissões de localização quando solicitado pelo aplicativo.
 
 🏗️ Estrutura do Projeto (simplificada)
