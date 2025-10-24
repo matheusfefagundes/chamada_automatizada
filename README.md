@@ -1,9 +1,9 @@
 Chamada Automatizada
 
-Aplicativo Flutter para automatização do registo de presenças em sala de aula ou eventos, utilizando geolocalização e um desafio de vivacidade.
+- Aplicativo Flutter para automatização do registo de presenças em sala de aula ou eventos, utilizando geolocalização e um desafio de vivacidade.
 
 📝 Descrição
-Este projeto visa simplificar o processo de chamada, eliminando a necessidade de intervenção manual do professor. O aplicativo executa rodadas de verificação de presença em intervalos configuráveis. Para confirmar a presença, o aluno precisa estar dentro de uma área geográfica pré-definida e responder a um simples desafio ("liveness check") apresentado no ecrã dentro de um tempo limite.
+- Este projeto visa simplificar o processo de chamada, eliminando a necessidade de intervenção manual do professor. O aplicativo executa rodadas de verificação de presença em intervalos configuráveis. Para confirmar a presença, o aluno precisa estar dentro de uma área geográfica pré-definida e responder a um simples desafio ("liveness check") apresentado no ecrã dentro de um tempo limite.
 
 ✨ Funcionalidades Principais
 - Cadastro Inicial: Permite ao aluno registar os seus dados básicos (nome, matrícula, turma) na primeira utilização.
