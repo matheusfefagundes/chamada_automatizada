@@ -21,9 +21,9 @@ class AttendanceService with ChangeNotifier {
   DateTime? _nextRoundTime;
   int _currentRound = 0;
 
-  // Coordenadas do local permitido
-  final double _targetLatitude = -26.265062;
-  final double _targetLongitude = -48.863121;
+  // Coordenadas do local permitido -26.304309480393407, -48.85103922453631
+  final double _targetLatitude = -26.304309480393407;
+  final double _targetLongitude = -48.85103922453631;
   final double _maxDistanceInMeters = 1000; // Em metros
 
   List<AttendanceRecord> get history => _history;
