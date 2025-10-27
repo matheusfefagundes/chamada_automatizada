@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/date_symbol_data_local.dart'; // Importar para inicialização
 
 import 'screens/onboarding_screen.dart';
 import 'screens/home_scaffold.dart';
@@ -8,15 +9,25 @@ import 'services/attendance_service.dart';
 import 'services/settings_service.dart';
 
 void main() async {
+  // Garante que os bindings do Flutter estejam inicializados
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ***** CORRIGIDO *****
+  // Inicializa os dados de formatação de data/hora para o locale padrão
+  // O segundo argumento foi removido.
+  await initializeDateFormatting();
+  // *********************
+
   // Inicializa os serviços e o SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   final settingsService = SettingsService(prefs);
-  final attendanceService = AttendanceService(settingsService);
+  // Passa settingsService E prefs para AttendanceService
+  final attendanceService = AttendanceService(settingsService, prefs);
 
   runApp(
     MultiProvider(
       providers: [
+        // Usa .value para instâncias já criadas
         ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider.value(value: attendanceService),
       ],
@@ -40,20 +51,50 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,
           elevation: 4,
+          titleTextStyle: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.white), // Ajuste opcional
         ),
-        cardTheme: const CardThemeData(
+        // ***** CORRIGIDO *****
+        // Usar CardThemeData em vez de CardTheme
+        cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Bordas arredondadas
+          margin: const EdgeInsets.symmetric(vertical: 8), // Margem padrão
+        ),
+        // *********************
+        chipTheme: ChipThemeData(
+          // Estilo padrão para Chips
+          backgroundColor: Colors.grey.shade300,
+          labelStyle: TextStyle(color: Colors.grey.shade800),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey.shade400, width: 0.5)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-          ),
+              backgroundColor: Colors.indigo, // Cor de fundo
+              foregroundColor: Colors.white, // Cor do texto/ícone
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(
+                  vertical: 14, horizontal: 24), // Ajuste padding
+              textStyle: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold) // Estilo do texto
+              ),
+        ),
+        // Adicionar um tema para SnackBar para consistência
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: Colors.grey.shade800,
+          contentTextStyle: const TextStyle(color: Colors.white),
+          actionTextColor: Colors.indigo.shade200,
+          behavior: SnackBarBehavior.floating, // Flutuante fica melhor
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       home: Consumer<SettingsService>(
@@ -67,3 +108,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
