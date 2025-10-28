@@ -12,11 +12,8 @@ void main() async {
   // Garante que os bindings do Flutter estejam inicializados
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ***** CORRIGIDO *****
   // Inicializa os dados de formatação de data/hora para o locale padrão
-  // O segundo argumento foi removido.
   await initializeDateFormatting();
-  // *********************
 
   // Inicializa os serviços e o SharedPreferences
   final prefs = await SharedPreferences.getInstance();
@@ -56,8 +53,6 @@ class MyApp extends StatelessWidget {
               fontWeight: FontWeight.w500,
               color: Colors.white), // Ajuste opcional
         ),
-        // ***** CORRIGIDO *****
-        // Usar CardThemeData em vez de CardTheme
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 2,
@@ -65,7 +60,6 @@ class MyApp extends StatelessWidget {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Bordas arredondadas
           margin: const EdgeInsets.symmetric(vertical: 8), // Margem padrão
         ),
-        // *********************
         chipTheme: ChipThemeData(
           // Estilo padrão para Chips
           backgroundColor: Colors.grey.shade300,
@@ -83,9 +77,9 @@ class MyApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               padding: const EdgeInsets.symmetric(
-                  vertical: 14, horizontal: 24), // Ajuste padding
+                  vertical: 14, horizontal: 24),
               textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold) // Estilo do texto
+                  fontSize: 16, fontWeight: FontWeight.bold)
               ),
         ),
         // Adicionar um tema para SnackBar para consistência

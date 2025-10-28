@@ -17,17 +17,17 @@ Chamada Automatizada
 - Configurações: Permite ajustar o número de rodadas e o intervalo entre elas, além de ativar/desativar o agendador.
 
 🚀 Como Começar
-Estas instruções permitirão que obtenha uma cópia do projeto em execução na sua máquina local para fins de desenvolvimento e teste.
+- Estas instruções permitirão que obtenha uma cópia do projeto em execução na sua máquina local para fins de desenvolvimento e teste.
 
 Pré-requisitos
 - Flutter SDK (Canal Stable recomendado)
-- Um editor de código como VS Code ou Android Studio
-- Um dispositivo Android/iOS físico ou um emulador/simulador configurado.
+- Um editor de código como VS Code (recomendado)
+- Um emulador/simulador configurado (Android Studio recomendado).
 
 Instalação e Execução
 
 Clone o repositório:
-- git clone <url-do-seu-repositorio>
+- git clone <https://github.com/matheusfefagundes/chamada_automatizada.git>
 - cd chamada_automatizada
 
 Instale as dependências:

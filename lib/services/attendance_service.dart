@@ -1,17 +1,17 @@
 import 'dart:async';
-import 'dart:convert'; // Importar dart:convert
+import 'dart:convert'; 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Importar shared_preferences
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/attendance_record.dart';
 import 'settings_service.dart';
 
 class AttendanceService with ChangeNotifier {
   final SettingsService _settingsService;
-  final SharedPreferences _prefs; // Adicionar SharedPreferences
+  final SharedPreferences _prefs; 
   Timer? _timer;
 
   final ValueNotifier<bool> isChallengeActive = ValueNotifier(false);
@@ -352,7 +352,7 @@ class AttendanceService with ChangeNotifier {
       'date', // YYYY-MM-DD
       'round', // Número da rodada
       'status', // P/F/...
-      'recorded_at', // ISO8601 Timestamp
+      'recorded_at', 
       'notes',
       'validation_method'
     ];
