@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Importar para formatação de hora
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/attendance_service.dart';
 import '../services/settings_service.dart';
@@ -11,7 +11,7 @@ class DashboardScreen extends StatelessWidget {
   // Helper para obter cor de fundo com base no status
   Color _getStatusBackgroundColor(String status) {
     status = status.toLowerCase();
-    // ***** CORRIGIDO: Adicionadas chaves {} *****
+    
     if (status == 'presente') {
       return Colors.green.shade100;
     }
@@ -57,7 +57,6 @@ class DashboardScreen extends StatelessWidget {
   // Helper para obter ícone com base no status
   IconData _getStatusIcon(String status) {
      status = status.toLowerCase();
-      // ***** CORRIGIDO: Adicionadas chaves {} *****
      if (status == 'presente') {
       return Icons.check_circle_outline;
      }
@@ -100,7 +99,6 @@ class DashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Dashboard'),
         centerTitle: true,
-        // Opcional: Adicionar indicador se o agendador está ativo
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -111,11 +109,9 @@ class DashboardScreen extends StatelessWidget {
           )
         ],
       ),
-      // Usar ListView para permitir scroll se o conteúdo for grande
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Card do Aluno (sem alterações)
           Card(
             elevation: 4,
             child: Padding(
@@ -136,7 +132,6 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20), // Espaçamento
 
-          // Card Status da Chamada (Modificado)
           Card(
             elevation: 4,
             child: Padding(
@@ -185,7 +180,7 @@ class DashboardScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
                   // Informações gerais do agendador
-                  if (isSchedulerRunning) ...[ // Usar spread operator para adicionar múltiplos widgets condicionalmente
+                  if (isSchedulerRunning) ...[ 
                      if (nextRoundTime != null)
                         Text(
                             'Próxima verificação: ${timeFormatter.format(nextRoundTime)}',
@@ -232,7 +227,7 @@ class DashboardScreen extends StatelessWidget {
                     width: 20, height: 20,
                     child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white)
                   )
-                : const Icon(Icons.touch_app_outlined), // Ícone mais sugestivo
+                : const Icon(Icons.touch_app_outlined),
             label: Text(attendanceService.isProcessing
                 ? 'Processando...'
                 : 'Confirmar Presença Agora'), // Texto mais claro

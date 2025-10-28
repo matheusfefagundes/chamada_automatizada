@@ -50,11 +50,6 @@ class AttendanceService with ChangeNotifier {
   AttendanceService(this._settingsService, this._prefs) {
     // Modificar construtor
     _loadHistory(); // Carregar histórico ao iniciar
-    // Opcional: Iniciar o scheduler se estava ativo na última vez
-    // _isSchedulerRunning = _prefs.getBool('scheduler_running_state') ?? false;
-    // if (_isSchedulerRunning) {
-    //   startScheduler(resume: true); // Precisaria de lógica para resumir
-    // }
   }
 
   // --- Funções de Persistência do Histórico ---
@@ -110,10 +105,8 @@ class AttendanceService with ChangeNotifier {
       return recordDate.isAtSameMomentAs(today);
     }).toList();
   }
-  // --- Fim Funções de Persistência ---
 
   Future<Position> _determinePosition() async {
-    // ... (código existente sem alterações)
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -213,8 +206,6 @@ class AttendanceService with ChangeNotifier {
         _currentRound >= _settingsService.getSettings().numberOfRounds) {
       // Se era a última rodada automática
       _nextRoundTime = null; // Limpa a próxima rodada
-      // Considerar parar o scheduler aqui ou deixar ele parar no próximo tick do timer
-      // stopScheduler(); // O timer já vai parar no próximo tick
     }
 
     notifyListeners();
@@ -269,8 +260,6 @@ class AttendanceService with ChangeNotifier {
     } else if (_history.isNotEmpty) {
       final lastTime = lastRecord!.timestamp; // Usa o getter lastRecord
       if (DateTime.now().difference(lastTime) >= interval) {
-        // Se já passou o tempo, deveria rodar agora, mas vamos agendar para evitar loops rápidos
-        //shouldRunNow = true; // Comentei para evitar execuções muito rápidas em sequência
       }
     }
 
@@ -318,22 +307,12 @@ class AttendanceService with ChangeNotifier {
     _isSchedulerRunning = false;
     _nextRoundTime = null;
     notifyListeners();
-    // Opcional: Salvar o estado do scheduler
-    // _prefs.setBool('scheduler_running_state', _isSchedulerRunning);
   }
 
   void _scheduleNextRound(Duration after) {
     if (!_isSchedulerRunning) return; // Não agenda se não estiver ativo
-
     _nextRoundTime = DateTime.now().add(after);
     notifyListeners();
-
-    // O agendamento real acontece em _scheduleNextAutomaticRound
-    // Apenas atualizamos a UI aqui. O timer será recriado lá.
-    // Isso evita o problema de ter o _timer antigo ainda ativo
-    // quando _scheduleNextRound é chamada dentro de runAttendanceRound.
-    // Vamos chamar _scheduleNextAutomaticRound aqui de forma assíncrona
-    // para garantir que o estado seja atualizado antes de reagendar.
     Future.microtask(() => _scheduleNextAutomaticRound());
   }
 
@@ -347,7 +326,6 @@ class AttendanceService with ChangeNotifier {
   }
 
   Future<bool> _triggerLivenessChallenge() async {
-    // ... (código existente sem alterações)
     _challengeCompleter = Completer<bool>();
     isChallengeActive.value = true;
 
@@ -358,7 +336,6 @@ class AttendanceService with ChangeNotifier {
   }
 
   void completeChallenge(bool success) {
-    // ... (código existente sem alterações)
     if (_challengeCompleter != null && !_challengeCompleter!.isCompleted) {
       _challengeCompleter!.complete(success);
     }
@@ -401,8 +378,6 @@ class AttendanceService with ChangeNotifier {
     }
   }
 
-  // --- Funções para o Dashboard (Nota 7) ---
-
   // Retorna o status de uma rodada específica do dia atual
   String getRoundStatus(int roundNumber) {
     _resetIfNewDay(); // Garante que estamos a olhar para o dia certo
@@ -426,15 +401,9 @@ class AttendanceService with ChangeNotifier {
     }
 
     if (_isSchedulerRunning && _currentRound >= roundNumber) {
-      // Se o scheduler está rodando e já passamos desta rodada, mas não há registro, algo estranho aconteceu
-      // Poderia ser um erro, mas vamos tratar como "Pendente" ou "Não executada"
-      // No entanto, pela lógica atual, se passou a rodada, deveria ter um registro.
-      // Se chegou aqui sem registro, pode ser que a rodada ainda não correu.
-      // Vamos verificar se a próxima rodada é esta ou posterior.
       if (nextRoundTime != null && roundNumber > _currentRound) {
         return "A iniciar";
       } else {
-        // Se já passou a hora e não tem registro (pode ter falhado ou sido pulada)
         return "Não registrada";
       }
     }
@@ -469,15 +438,6 @@ class AttendanceService with ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
-    // Não se esqueça de remover listeners se adicionar algum
     super.dispose();
   }
 }
-
-// Adicionar esta linha no main.dart ANTES de runApp
-// final prefs = await SharedPreferences.getInstance();
-// E passar prefs para os providers:
-// final settingsService = SettingsService(prefs);
-// final attendanceService = AttendanceService(settingsService, prefs); // Modificado
-//
-// ChangeNotifierProvider.value(value: attendanceService), // Passar a instância criada
