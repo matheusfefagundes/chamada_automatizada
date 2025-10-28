@@ -34,7 +34,6 @@ class DashboardScreen extends StatelessWidget {
    // Helper para obter cor do texto com base no status
   Color _getStatusTextColor(String status) {
     status = status.toLowerCase();
-     // ***** CORRIGIDO: Adicionadas chaves {} *****
      if (status == 'presente') {
       return Colors.green.shade900;
      }
@@ -203,7 +202,7 @@ class DashboardScreen extends StatelessWidget {
                      valueListenable: attendanceService.currentDistance,
                      builder: (context, distance, child) {
                        if (distance != null) {
-                         bool isInside = distance <= attendanceService.maxDistanceInMeters; // Acessar maxDistanceInMeters diretamente (torná-lo público ou usar getter)
+                         bool isInside = distance <= attendanceService.maxDistanceInMeters;
                          return Text(
                            'Distância atual: ${distance.toStringAsFixed(1)} m ${isInside ? "(Dentro)" : "(Fora)"}',
                            style: TextStyle(fontSize: 14, color: isInside ? Colors.green.shade700: Colors.orange.shade800),
@@ -230,7 +229,7 @@ class DashboardScreen extends StatelessWidget {
                 : const Icon(Icons.touch_app_outlined),
             label: Text(attendanceService.isProcessing
                 ? 'Processando...'
-                : 'Confirmar Presença Agora'), // Texto mais claro
+                : 'Confirmar Presença Agora'), 
             // Desabilita se estiver processando OU se todas as rodadas do dia já foram feitas
             onPressed: attendanceService.isProcessing || attendanceService.currentRound >= settingsService.getSettings().numberOfRounds
                 ? null
