@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "636914817052",
+    "project_id": "chamada-automatizada-ff986",
+    "storage_bucket": "chamada-automatizada-ff986.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:636914817052:android:e7df3cd78c0ba024e067d9",
+        "android_client_info": {
+          "package_name": "com.example.chamada_automatizada"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDl10SaPNv8sSe7MvaNdjAkTu5E0tsiOC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -15,20 +15,21 @@ class HistoryScreen extends StatelessWidget {
         title: const Text('Histórico de Hoje'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download),
+            icon: const Icon(Icons.share), // Ícone alterado para Share
+            tooltip: 'Exportar e Compartilhar CSV',
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
-              final result = await attendanceService.exportToCsv();
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(result?.startsWith('Erro') ?? true
-                      ? result ?? 'Nenhum dado para exportar.'
-                      : 'CSV salvo em: $result'),
-                  backgroundColor: result?.startsWith('Erro') ?? true
-                      ? Colors.red
-                      : Colors.green,
-                ),
-              );
+              try {
+                // Chama o método atualizado que abre o menu de compartilhamento
+                await attendanceService.exportAndShareCsv();
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
           ),
         ],

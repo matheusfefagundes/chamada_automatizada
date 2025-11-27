@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Importar para inicialização
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:firebase_core/firebase_core.dart'; 
 
 import 'screens/onboarding_screen.dart';
 import 'screens/home_scaffold.dart';
@@ -9,22 +10,27 @@ import 'services/attendance_service.dart';
 import 'services/settings_service.dart';
 
 void main() async {
-  // Garante que os bindings do Flutter estejam inicializados
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa os dados de formatação de data/hora para o locale padrão
+  // Inicializa dados de formatação de data
   await initializeDateFormatting();
 
-  // Inicializa os serviços e o SharedPreferences
+  // Inicializa o Firebase (Nota 10)
+  try {
+    await Firebase.initializeApp();
+    debugPrint("Firebase inicializado com sucesso.");
+  } catch (e) {
+    debugPrint("Erro ao inicializar Firebase: $e");
+    // O app continua funcionando mesmo sem Firebase (modo offline/fallback)
+  }
+
   final prefs = await SharedPreferences.getInstance();
   final settingsService = SettingsService(prefs);
-  // Passa settingsService E prefs para AttendanceService
   final attendanceService = AttendanceService(settingsService, prefs);
 
   runApp(
     MultiProvider(
       providers: [
-        // Usa .value para instâncias já criadas
         ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider.value(value: attendanceService),
       ],
@@ -48,20 +54,15 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.indigo,
           foregroundColor: Colors.white,
           elevation: 4,
-          titleTextStyle: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: Colors.white), // Ajuste opcional
+          titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white),
         ),
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Bordas arredondadas
-          margin: const EdgeInsets.symmetric(vertical: 8), // Margem padrão
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.symmetric(vertical: 8),
         ),
         chipTheme: ChipThemeData(
-          // Estilo padrão para Chips
           backgroundColor: Colors.grey.shade300,
           labelStyle: TextStyle(color: Colors.grey.shade800),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -71,29 +72,22 @@ class MyApp extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigo, // Cor de fundo
-              foregroundColor: Colors.white, // Cor do texto/ícone
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(
-                  vertical: 14, horizontal: 24),
-              textStyle: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold)
-              ),
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
-        // Adicionar um tema para SnackBar para consistência
         snackBarTheme: SnackBarThemeData(
           backgroundColor: Colors.grey.shade800,
           contentTextStyle: const TextStyle(color: Colors.white),
           actionTextColor: Colors.indigo.shade200,
-          behavior: SnackBarBehavior.floating, // Flutuante fica melhor
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       home: Consumer<SettingsService>(
         builder: (context, settingsService, _) {
-          // Decide qual tela mostrar com base no cadastro do aluno
           return settingsService.getStudent() == null
               ? const OnboardingScreen()
               : const HomeScaffold();
@@ -102,4 +96,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

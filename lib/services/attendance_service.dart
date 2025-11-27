@@ -1,17 +1,20 @@
 import 'dart:async';
-import 'dart:convert'; 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:csv/csv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:firebase_core/firebase_core.dart'; // <--- O CORRETOR DO ERRO
 import '../models/attendance_record.dart';
 import 'settings_service.dart';
 
 class AttendanceService with ChangeNotifier {
   final SettingsService _settingsService;
-  final SharedPreferences _prefs; 
+  final SharedPreferences _prefs;
   Timer? _timer;
 
   final ValueNotifier<bool> isChallengeActive = ValueNotifier(false);
@@ -22,39 +25,31 @@ class AttendanceService with ChangeNotifier {
   bool _isSchedulerRunning = false;
   bool _isProcessing = false;
   DateTime? _nextRoundTime;
-  int _currentRound = 0; // Mantém a contagem da rodada atual
+  int _currentRound = 0;
 
-  // Chave para salvar o histórico
   static const _historyKey = 'attendance_history';
-
-  // Coordenadas e distância
-  final double _targetLatitude = -26.304309480393407;
-  final double _targetLongitude = -48.85103922453631;
-  final double _maxDistanceInMeters = 1000;
+  // Coordenadas alvo e raio
+  final double _targetLatitude = -26.26497542568652; 
+  final double _targetLongitude = -48.863161879576815;
+  final double _maxDistanceInMeters = 1000;//Em metros
 
   List<AttendanceRecord> get history => _history;
   bool get isSchedulerRunning => _isSchedulerRunning;
   bool get isProcessing => _isProcessing;
   DateTime? get nextRoundTime => _nextRoundTime;
   AttendanceRecord? get lastRecord {
-    // Ordena por rodada descendente para pegar o último
     final sortedHistory = List<AttendanceRecord>.from(_history)
       ..sort((a, b) => b.round.compareTo(a.round));
     return sortedHistory.isEmpty ? null : sortedHistory.first;
   }
-
-  // Getter para a rodada atual
   int get currentRound => _currentRound;
   double get maxDistanceInMeters => _maxDistanceInMeters;
 
   AttendanceService(this._settingsService, this._prefs) {
-    // Modificar construtor
-    _loadHistory(); // Carregar histórico ao iniciar
+    _loadHistory();
   }
 
-  // --- Funções de Persistência do Histórico ---
   Future<void> _saveHistory() async {
-    // Salva apenas o histórico do dia atual
     final todayHistory = _getTodayHistory();
     List<String> historyJsonList =
         todayHistory.map((record) => json.encode(record.toJson())).toList();
@@ -71,23 +66,19 @@ class AttendanceService with ChangeNotifier {
             try {
               return AttendanceRecord.fromJson(json.decode(jsonString));
             } catch (e) {
-              debugPrint("Erro ao decodificar registro do histórico: $e");
-              return null; // Retorna null para registros inválidos
+              debugPrint("Erro ao decodificar registro: $e");
+              return null;
             }
           })
           .where((record) {
-            // Filtra para manter apenas registros de hoje e válidos
             if (record == null) return false;
-            final recordDate =
-                DateTime(record.date.year, record.date.month, record.date.day);
+            final recordDate = DateTime(record.date.year, record.date.month, record.date.day);
             return recordDate.isAtSameMomentAs(today);
           })
           .toList()
-          .cast<AttendanceRecord>(); // Converte para o tipo correto
+          .cast<AttendanceRecord>();
 
-      // Atualiza a rodada atual com base no histórico carregado
-      _currentRound =
-          _history.map((r) => r.round).fold(0, (max, r) => r > max ? r : max);
+      _currentRound = _history.map((r) => r.round).fold(0, (max, r) => r > max ? r : max);
     } else {
       _history = [];
       _currentRound = 0;
@@ -95,13 +86,11 @@ class AttendanceService with ChangeNotifier {
     notifyListeners();
   }
 
-  // Helper para pegar o histórico apenas do dia atual
   List<AttendanceRecord> _getTodayHistory() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return _history.where((record) {
-      final recordDate =
-          DateTime(record.date.year, record.date.month, record.date.day);
+      final recordDate = DateTime(record.date.year, record.date.month, record.date.day);
       return recordDate.isAtSameMomentAs(today);
     }).toList();
   }
@@ -131,27 +120,39 @@ class AttendanceService with ChangeNotifier {
     return await Geolocator.getCurrentPosition();
   }
 
+  //Salvar no Firebase
+  Future<void> _syncToExternalDatabase(AttendanceRecord record) async {
+    try {
+      // Verifica se o Firebase foi inicializado antes de tentar usar
+      if (Firebase.apps.isEmpty) return;
+
+      await FirebaseFirestore.instance.collection('presencas').add({
+        ...record.toJson(),
+        'synced_at': FieldValue.serverTimestamp(),
+      });
+      debugPrint("Registro sincronizado com Firebase.");
+    } catch (e) {
+      debugPrint("Erro ao salvar no banco externo: $e");
+    }
+  }
+
   Future<void> runAttendanceRound({bool manual = false}) async {
     final student = _settingsService.getStudent();
     if (student == null) return;
 
-    // Verifica se o dia mudou desde o último registro, se sim, reseta o histórico e a rodada
     _resetIfNewDay();
 
     if (!manual && _isSchedulerRunning) {
-      // Incrementa apenas se for uma rodada automática e o scheduler estiver ativo
       _currentRound++;
     } else if (manual) {
-      // Para rodada manual, define a rodada como a próxima disponível no dia
       _currentRound = _getTodayHistory().length + 1;
     }
 
-    // Limita ao número máximo de rodadas configurado se for automático
     final maxRounds = _settingsService.getSettings().numberOfRounds;
     if (!manual && _currentRound > maxRounds) {
-      _currentRound = maxRounds; // Trava na última rodada
-      stopScheduler(); // Para o agendador se excedeu
-      return; // Não executa a rodada extra
+      _currentRound = maxRounds;
+      stopScheduler();
+      return;
     }
 
     bool challengePassed = false;
@@ -168,12 +169,12 @@ class AttendanceService with ChangeNotifier {
 
       if (distanceInMeters <= _maxDistanceInMeters) {
         challengePassed = await _triggerLivenessChallenge();
-        result = challengePassed ? 'Presente' : 'Ausente (Falha Desafio)';
+        result = challengePassed ? 'Presente' : 'Ausente';
       } else {
         result = 'Fora do Local';
       }
     } catch (e) {
-      result = 'Erro ($e)'; // Melhorar mensagem de erro
+      result = 'Erro ($e)';
       currentDistance.value = null;
       debugPrint("Erro ao obter localização: $e");
     }
@@ -182,135 +183,106 @@ class AttendanceService with ChangeNotifier {
       studentId: student.id,
       studentName: student.name,
       date: DateTime.now(),
-      // Usa _currentRound que foi calculado acima
       round: _currentRound,
       timestamp: DateTime.now(),
       result: result,
       challengePassed: challengePassed,
     );
 
-    // Remove registro anterior da mesma rodada (se houver, ex: forçou manual depois de automático)
-    _history.removeWhere(
-        (r) => r.round == record.round && _isSameDay(r.date, record.date));
+    _history.removeWhere((r) => r.round == record.round && _isSameDay(r.date, record.date));
     _history.add(record);
-    await _saveHistory(); // Salva após adicionar
+    
+    await _saveHistory(); // Persistência Local
+    _syncToExternalDatabase(record); // Persistência Externa
 
-    // Agendar próxima rodada automática apenas se não for manual e ainda houver rodadas
-    if (_isSchedulerRunning &&
-        !manual &&
-        _currentRound < _settingsService.getSettings().numberOfRounds) {
+    if (_isSchedulerRunning && !manual && _currentRound < _settingsService.getSettings().numberOfRounds) {
       final interval = _settingsService.getSettings().intervalInMinutes;
       _scheduleNextRound(Duration(minutes: interval));
-    } else if (_isSchedulerRunning &&
-        !manual &&
-        _currentRound >= _settingsService.getSettings().numberOfRounds) {
-      // Se era a última rodada automática
-      _nextRoundTime = null; // Limpa a próxima rodada
+    } else if (_isSchedulerRunning && !manual && _currentRound >= _settingsService.getSettings().numberOfRounds) {
+      _nextRoundTime = null;
     }
 
     notifyListeners();
   }
 
-  // Função helper para verificar se duas datas são no mesmo dia
   bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
+    return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
   }
 
-  // Função para resetar o histórico e a rodada se for um novo dia
   void _resetIfNewDay() {
     if (_history.isNotEmpty) {
       final lastRecordDate = _history.last.date;
       final now = DateTime.now();
       if (!_isSameDay(lastRecordDate, now)) {
-        _history = []; // Limpa o histórico em memória
-        _currentRound = 0; // Reseta a contagem da rodada
-        _saveHistory(); // Salva o histórico vazio (limpa o do dia anterior)
+        _history = [];
+        _currentRound = 0;
+        _saveHistory();
         notifyListeners();
       }
     }
   }
 
   void startScheduler() {
-    _resetIfNewDay(); // Garante que começa limpo se for um novo dia
-    if (_isSchedulerRunning) return; // Não inicia se já estiver rodando
+    _resetIfNewDay();
+    if (_isSchedulerRunning) return;
 
     _isSchedulerRunning = true;
-    // Define a rodada atual baseada no histórico carregado do dia
-    _currentRound = _getTodayHistory()
-        .map((r) => r.round)
-        .fold(0, (max, r) => r > max ? r : max);
+    _currentRound = _getTodayHistory().map((r) => r.round).fold(0, (max, r) => r > max ? r : max);
 
     notifyListeners();
-    _scheduleNextAutomaticRound(); // Chama a função que agenda ou executa
+    _scheduleNextAutomaticRound();
   }
 
   void _scheduleNextAutomaticRound() {
-    if (!_isSchedulerRunning) return; // Só agenda se estiver ativo
+    if (!_isSchedulerRunning) return;
 
     final settings = _settingsService.getSettings();
     final interval = Duration(minutes: settings.intervalInMinutes);
 
-    // Se a rodada atual é 0 (início) ou já passou o intervalo desde a última rodada
     bool shouldRunNow = false;
     if (_currentRound == 0) {
-      shouldRunNow =
-          true; // Primeira rodada inicia "imediatamente" (após pequeno delay)
-    } else if (_history.isNotEmpty) {
-      final lastTime = lastRecord!.timestamp; // Usa o getter lastRecord
-      if (DateTime.now().difference(lastTime) >= interval) {
-      }
+      shouldRunNow = true;
     }
 
-    // Cancela timer anterior para evitar múltiplos timers
     _timer?.cancel();
 
     if (_currentRound < settings.numberOfRounds) {
-      Duration delay = shouldRunNow
-          ? const Duration(seconds: 5)
-          : interval; // Delay curto para primeira ou se já passou tempo
+      Duration delay = shouldRunNow ? const Duration(seconds: 5) : interval;
 
-      // Se já passou o tempo da última + intervalo, agenda para daqui a alguns segundos
       if (!shouldRunNow && _history.isNotEmpty) {
         final nextScheduled = lastRecord!.timestamp.add(interval);
         if (DateTime.now().isAfter(nextScheduled)) {
-          delay = const Duration(
-              seconds: 10); // Agendar para daqui a 10s se o tempo já passou
+          delay = const Duration(seconds: 10);
         } else {
-          // Calcula o tempo restante até a próxima execução agendada
           delay = nextScheduled.difference(DateTime.now());
         }
       }
 
-      _nextRoundTime = DateTime.now().add(delay); // Atualiza próxima hora
+      _nextRoundTime = DateTime.now().add(delay);
       notifyListeners();
 
       _timer = Timer(delay, () {
-        // Verifica de novo se ainda deve rodar (pode ter sido parado)
         if (_isSchedulerRunning && _currentRound < settings.numberOfRounds) {
-          runAttendanceRound(); // Executa a rodada automática (incrementará _currentRound)
-          // A própria runAttendanceRound vai re-agendar a próxima se necessário
+          runAttendanceRound();
         } else {
-          stopScheduler(); // Para se não deve mais rodar
+          stopScheduler();
         }
       });
     } else {
-      // Já completou todas as rodadas
       stopScheduler();
     }
   }
 
   void stopScheduler() {
     _timer?.cancel();
-    _timer = null; // Limpa a referência do timer
+    _timer = null;
     _isSchedulerRunning = false;
     _nextRoundTime = null;
     notifyListeners();
   }
 
   void _scheduleNextRound(Duration after) {
-    if (!_isSchedulerRunning) return; // Não agenda se não estiver ativo
+    if (!_isSchedulerRunning) return;
     _nextRoundTime = DateTime.now().add(after);
     notifyListeners();
     Future.microtask(() => _scheduleNextAutomaticRound());
@@ -319,7 +291,6 @@ class AttendanceService with ChangeNotifier {
   Future<void> runSingleAttendanceRound() async {
     _isProcessing = true;
     notifyListeners();
-    // Passa a rodada manualmente calculada
     await runAttendanceRound(manual: true);
     _isProcessing = false;
     notifyListeners();
@@ -328,9 +299,7 @@ class AttendanceService with ChangeNotifier {
   Future<bool> _triggerLivenessChallenge() async {
     _challengeCompleter = Completer<bool>();
     isChallengeActive.value = true;
-
     bool result = await _challengeCompleter!.future;
-
     isChallengeActive.value = false;
     return result;
   }
@@ -341,96 +310,76 @@ class AttendanceService with ChangeNotifier {
     }
   }
 
-  Future<String?> exportToCsv() async {
-    // Pega apenas o histórico de hoje para exportar
+  // Exportar e Compartilhar CSV 
+  Future<void> exportAndShareCsv() async {
     final todayHistory = _getTodayHistory();
-    if (todayHistory.isEmpty) return "Nenhum dado de hoje para exportar.";
+    if (todayHistory.isEmpty) {
+      throw Exception("Nenhum dado de hoje para exportar.");
+    }
 
     final header = [
-      'student_id',
-      'student_name',
-      'date', // YYYY-MM-DD
-      'round', // Número da rodada
-      'status', // P/F/...
-      'recorded_at', 
-      'notes',
-      'validation_method'
+      'Matrícula', 
+      'Nome do Aluno', 
+      'Data', 
+      'Rodada', 
+      'Status', 
+      'Horário do Registro', 
+      'Método de Validação'
     ];
     List<List<String>> rows = [
       header,
-      ...todayHistory.map((r) => r.toCsvRow()) // Usa o método do modelo
+      ...todayHistory.map((r) => r.toCsvRow())
     ];
     String csv = const ListToCsvConverter(fieldDelimiter: ';').convert(rows);
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      // Usar data no nome do ficheiro
+      // Salva em diretório temporário para facilitar o compartilhamento
+      final directory = await getTemporaryDirectory();
       final now = DateTime.now();
-      final dateStr =
-          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      final path = "${directory.path}/chamada_$dateStr.csv";
+      final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      final fileName = "chamada_$dateStr.csv";
+      final path = "${directory.path}/$fileName";
+      
       final file = File(path);
       await file.writeAsString(csv);
-      return path;
+
+      // Usa Share Plus para compartilhar o arquivo (WhatsApp, E-mail, etc)
+      await Share.shareXFiles(
+        [XFile(path)],
+        text: 'Relatório de Chamada - $dateStr',
+      );
     } catch (e) {
-      debugPrint("Erro ao salvar arquivo CSV: $e");
-      return "Erro ao salvar arquivo: $e";
+      debugPrint("Erro ao exportar/compartilhar: $e");
+      throw Exception("Erro ao gerar arquivo: $e");
     }
   }
 
-  // Retorna o status de uma rodada específica do dia atual
   String getRoundStatus(int roundNumber) {
-    _resetIfNewDay(); // Garante que estamos a olhar para o dia certo
+    _resetIfNewDay();
     final todayHistory = _getTodayHistory();
-    final record =
-        todayHistory.where((r) => r.round == roundNumber).firstOrNull;
+    final record = todayHistory.where((r) => r.round == roundNumber).firstOrNull;
 
-    if (record != null) {
-      return record
-          .result; // Retorna o resultado registrado (Presente, Ausente, Fora do Local, etc.)
-    }
+    if (record != null) return record.result;
 
-    // Se não há registro para a rodada
     final settings = _settingsService.getSettings();
-    if (roundNumber > settings.numberOfRounds) {
-      return "Inválida"; // Rodada além das configuradas
+    if (roundNumber > settings.numberOfRounds) return "Inválida";
+    if (!_isSchedulerRunning && _currentRound < roundNumber) return "Agendador Inativo";
+    
+    if (_isSchedulerRunning) {
+      if (_currentRound >= roundNumber && nextRoundTime != null && roundNumber > _currentRound) return "A iniciar";
+      if (_currentRound >= roundNumber) return "Não registrada";
+      if (roundNumber == _currentRound + 1 && nextRoundTime != null) return "A iniciar";
+      if (roundNumber > _currentRound + 1) return "Agendada";
     }
 
-    if (!_isSchedulerRunning && _currentRound < roundNumber) {
-      return "Agendador Inativo";
-    }
-
-    if (_isSchedulerRunning && _currentRound >= roundNumber) {
-      if (nextRoundTime != null && roundNumber > _currentRound) {
-        return "A iniciar";
-      } else {
-        return "Não registrada";
-      }
-    }
-
-    if (_isSchedulerRunning &&
-        roundNumber == _currentRound + 1 &&
-        nextRoundTime != null) {
-      return "A iniciar"; // É a próxima rodada agendada
-    }
-
-    if (_isSchedulerRunning && roundNumber > _currentRound + 1) {
-      return "Agendada"; // Rodadas futuras
-    }
-
-    // Caso padrão ou se scheduler inativo e a rodada ainda não chegou
     return "Pendente";
   }
 
-  // Retorna uma lista com os status de todas as rodadas configuradas
   List<Map<String, dynamic>> getAllRoundsStatus() {
     final settings = _settingsService.getSettings();
     final List<Map<String, dynamic>> roundsStatus = [];
     for (int i = 1; i <= settings.numberOfRounds; i++) {
-      roundsStatus.add({
-        'round': i,
-        'status': getRoundStatus(i),
-      });
+      roundsStatus.add({'round': i, 'status': getRoundStatus(i)});
     }
     return roundsStatus;
   }
