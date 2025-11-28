@@ -15,7 +15,7 @@ void main() async {
   // Inicializa dados de formatação de data
   await initializeDateFormatting();
 
-  // Inicializa o Firebase (Nota 10)
+  // Inicializa o Firebase
   try {
     await Firebase.initializeApp();
     debugPrint("Firebase inicializado com sucesso.");

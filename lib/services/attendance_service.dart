@@ -29,8 +29,8 @@ class AttendanceService with ChangeNotifier {
 
   static const _historyKey = 'attendance_history';
   // Coordenadas alvo e raio
-  final double _targetLatitude = -26.26497542568652; 
-  final double _targetLongitude = -48.863161879576815;
+  final double _targetLatitude = -26.304309480393407; 
+  final double _targetLongitude = -48.851039224536311;
   final double _maxDistanceInMeters = 1000;//Em metros
 
   List<AttendanceRecord> get history => _history;
